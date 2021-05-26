@@ -28,6 +28,7 @@ session_start();
     <table class="table">
         <thead>
             <tr>
+                <th scope="col">Photo</th>
                 <th scope="col">Username</th>
                 <th scope="col">Email</th>
                 <th scope="col">Date</th>
@@ -37,6 +38,9 @@ session_start();
         <tbody>
             <?php foreach($rows as $row):?>
             <tr>
+                <th scope="row">
+                <img style="height: 50px; width: 50px;" src="public\img\uploaded\member\<?=$row["path"]?>" alt="<?=$row["path"]?>">
+                </th>
                 <th scope="row"><?= $row["username"]?></th>
                 <td><?= $row["email"]?></td>
                 <td><?= $row["created_at"]?></td>
@@ -55,7 +59,7 @@ session_start();
 <?php elseif($do == "add"):?>
 <div class="container">
     <h1 class="text-center">Add Member</h1>
-    <form method="POST" action="?do=insert">
+    <form method="POST" action="?do=insert" enctype="multipart/form-data">
         <div class="mb-3">
             <label class="form-label">Username</label>
             <input type="text" class="form-control" name="username">
@@ -72,6 +76,10 @@ session_start();
             <label class="form-label">Fullname</label>
             <input type="text" class="form-control" name="fullname">
         </div>
+        <div class="mb-3">
+            <label for="formFile" class="form-label">Upload photo</label>
+            <input class="form-control" type="file" id="formFile" name="avatar">
+        </div>
         <button type="submit" class="btn btn-primary">Submit</button>
     </form>
 </div>
@@ -79,12 +87,38 @@ session_start();
 <?php elseif($do == "insert"):?>
 <?php
     if($_SERVER['REQUEST_METHOD'] == "POST"){
+        $avatarName = $_FILES['avatar']['name'];
+        $avatarType = $_FILES['avatar']['type'];
+        $avatarTmpName = $_FILES['avatar']['tmp_name'];
+        $avatarError = $_FILES['avatar']['error'];
+        $avatarSize = $_FILES['avatar']['size'];
+
+        $avatarAllExtension = array("image/jpeg","image/png","image/jpg");
+        if(in_array($avatarType , $avatarAllExtension)){
+            $avatar = rand(0 , 1000)."_".$avatarName;
+            $destination = "public\img\uploaded\member\\".$avatar;
+            move_uploaded_file($avatarTmpName , $destination);
+        }else{
+            echo "sorry your extension is " . $avatarType;
+        }
         $username = $_POST['username'];
         $email    = $_POST['email'];
         $password = sha1($_POST['password']);
         $fullname = $_POST['fullname'];
-        $stmt = $con->prepare("INSERT INTO users(username,password,email,fullname,groupid,created_at) VALUES(?,?,?,?,0,now())");
-        $stmt->execute(array($username , $password , $email,$fullname));
+
+        $formErrors = array();
+        if(empty($username)){
+            $formErrors[] = "username mustnot be empty";
+        }
+        if(strlen($username) < 4){
+            $formErrors[] = "username mustnot be less than 4 character";
+        }
+        foreach($formErrors as $error){
+            echo $error . "<br>";
+        }
+
+        $stmt = $con->prepare("INSERT INTO users(username,password,email,fullname,groupid,created_at,path) VALUES(?,?,?,?,0,now(),?)");
+        $stmt->execute(array($username , $password , $email , $fullname , $avatar));
         header("location:member.php");
     }
 ?>
